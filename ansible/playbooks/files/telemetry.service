@@ -1,0 +1,13 @@
+[Unit]
+Description=Telemetry API
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/telemetry
+EnvironmentFile=/etc/telemetry.env
+ExecStart=/usr/bin/python3 -m sample_app.server
+DynamicUser=yes
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

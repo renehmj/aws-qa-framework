@@ -1,0 +1,3 @@
+# Production account. Read-only checks only.
+# No test server and no load test here, on purpose.
+modules: [aws]

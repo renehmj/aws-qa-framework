@@ -1,0 +1,99 @@
+---
+# Collect evidence from each server. This playbook does not judge anything.
+# pytest reads the files and decides pass or fail.
+- name: Scan the server with OpenSCAP and collect the results
+  hosts: all
+  become: true
+  vars:
+    scan_dir: /var/tmp/qa-scan
+    results_dir: "{{ playbook_dir }}/../../reports/hosts"
+
+  tasks:
+    - name: Create the results folder
+      ansible.builtin.file:
+        path: "{{ scan_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Read the real SSH settings
+      ansible.builtin.command: sshd -T
+      register: sshd
+      changed_when: false
+
+    - name: Read the installed packages
+      ansible.builtin.package_facts:
+
+    - name: Read the services
+      ansible.builtin.service_facts:
+
+    - name: Save the server settings
+      ansible.builtin.copy:
+        dest: "{{ scan_dir }}/facts.json"
+        mode: "0600"
+        content: "{{ server_settings | to_nice_json }}"
+      vars:
+        server_settings:
+          distribution: "{{ ansible_facts['distribution'] }}"
+          major_version: "{{ ansible_facts['distribution_major_version'] }}"
+          selinux: "{{ ansible_facts['selinux']['mode'] }}"
+          ssh_root_login: "{{ sshd.stdout | regex_search('permitrootlogin (\\S+)', '\\1') | first }}"
+          ssh_password_login: "{{ sshd.stdout | regex_search('passwordauthentication (\\S+)', '\\1') | first }}"
+          telemetry_service: "{{ ansible_facts['services']['telemetry.service']['state'] | default('missing') }}"
+          missing_packages: "{{ required_packages | difference(ansible_facts['packages'].keys()) }}"
+
+    - name: Run the compliance scan
+      ansible.builtin.command: >-
+        oscap xccdf eval
+        --profile {{ scan_profile }}
+        --results {{ scan_dir }}/xccdf.xml
+        --report {{ scan_dir }}/xccdf.html
+        {{ scan_datastream }}
+      register: compliance
+      changed_when: false
+      failed_when: compliance.rc not in [0, 2]   # 2 only means some rules failed
+
+    - name: Download today's vulnerability feed
+      ansible.builtin.get_url:
+        url: "{{ vulnerability_feed }}"
+        dest: "{{ scan_dir }}/feed.oval.xml.bz2"
+        mode: "0600"
+        force: true
+
+    - name: Unpack the feed
+      ansible.builtin.command: bunzip2 -f {{ scan_dir }}/feed.oval.xml.bz2
+      changed_when: false
+
+    - name: Run the vulnerability scan
+      ansible.builtin.command: >-
+        oscap oval eval
+        --results {{ scan_dir }}/oval.xml
+        --report {{ scan_dir }}/oval.html
+        {{ scan_dir }}/feed.oval.xml
+      changed_when: false
+
+    - name: Build a fix playbook for the server owner (QA does not apply it)
+      ansible.builtin.command: >-
+        oscap xccdf generate fix
+        --fix-type ansible
+        --profile {{ scan_profile }}
+        --output {{ scan_dir }}/fix-playbook.yml
+        {{ scan_datastream }}
+      changed_when: false
+
+    - name: Bring the results back
+      ansible.builtin.fetch:
+        src: "{{ scan_dir }}/{{ item }}"
+        dest: "{{ results_dir }}/{{ inventory_hostname }}/"
+        flat: true
+      loop:
+        - facts.json
+        - xccdf.xml
+        - xccdf.html
+        - oval.xml
+        - oval.html
+        - fix-playbook.yml
+
+    - name: Clean up the server
+      ansible.builtin.file:
+        path: "{{ scan_dir }}"
+        state: absent

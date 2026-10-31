@@ -1,0 +1,7 @@
+# QA account. Turn on database and cmdb when real ones are connected.
+# Account details are GitHub variables. See docs/OIDC_SETUP.md.
+modules: [aws, code, api, connectivity, os, serverless, load]
+
+load:
+  vus: 20
+  duration: 1m

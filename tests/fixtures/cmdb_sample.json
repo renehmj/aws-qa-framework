@@ -1,0 +1,28 @@
+{
+  "result": [
+    {
+      "name": "telemetry-01",
+      "instance_id": "i-0123456789abcdef0",
+      "location": "cloud",
+      "environment": "qa",
+      "status": "active",
+      "ip_address": ""
+    },
+    {
+      "name": "plant-gateway-01",
+      "instance_id": "",
+      "location": "onprem",
+      "environment": "qa",
+      "status": "active",
+      "ip_address": "10.20.0.15"
+    },
+    {
+      "name": "legacy-app-02",
+      "instance_id": "",
+      "location": "onprem",
+      "environment": "qa",
+      "status": "retired",
+      "ip_address": "10.20.0.16"
+    }
+  ]
+}

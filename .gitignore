@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.DS_Store
+reports/
+BLUEPRINT*.md
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfvars
+*.zip

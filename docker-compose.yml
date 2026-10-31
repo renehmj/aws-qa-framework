@@ -1,0 +1,17 @@
+# Two redundant databases for running the database tests on a laptop.
+# The password is a throwaway. These containers hold only sample data.
+services:
+  db-primary:
+    image: postgres:16
+    environment: &db_settings
+      POSTGRES_DB: energy
+      POSTGRES_PASSWORD: local-test-only
+    ports: ["5433:5432"]
+    volumes: &db_seed
+      - ./sample_app/db/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+
+  db-redundant:
+    image: postgres:16
+    environment: *db_settings
+    ports: ["5434:5432"]
+    volumes: *db_seed

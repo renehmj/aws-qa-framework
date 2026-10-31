@@ -1,0 +1,66 @@
+---
+- name: Configure the test server
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Wait until the new server is ready
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Install the required packages
+      ansible.builtin.dnf:
+        name: "{{ required_packages }}"
+        state: present
+
+    - name: Set the SSH login rules
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-baseline.conf
+        content: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          PermitEmptyPasswords no
+        mode: "0600"
+        validate: sshd -t -f %s
+      notify: Restart sshd
+
+    - name: Copy the application
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../sample_app/"
+        dest: /opt/telemetry/sample_app/
+        mode: u=rwX,go=rX
+
+    - name: Save the API token for the service
+      ansible.builtin.copy:
+        dest: /etc/telemetry.env
+        content: "API_TOKEN={{ lookup('ansible.builtin.env', 'QA_API_TOKEN') }}\n"
+        mode: "0600"
+      no_log: true
+      notify: Restart telemetry
+
+    - name: Install the service
+      ansible.builtin.copy:
+        src: telemetry.service
+        dest: /etc/systemd/system/telemetry.service
+        mode: "0644"
+      notify: Restart telemetry
+
+    - name: Start the service
+      ansible.builtin.systemd_service:
+        name: telemetry
+        state: started
+        enabled: true
+        daemon_reload: true
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.systemd_service:
+        name: sshd
+        state: restarted
+
+    - name: Restart telemetry
+      ansible.builtin.systemd_service:
+        name: telemetry
+        state: restarted
+        daemon_reload: true

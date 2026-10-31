@@ -1,0 +1,93 @@
+name: ci
+
+# Runs on every change. Fake AWS, real PostgreSQL, real k6. No credentials at all.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Smoke, regression, load
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      db-primary:
+        image: postgres:16
+        env:
+          POSTGRES_DB: energy
+          POSTGRES_PASSWORD: local-test-only
+        ports: ["5433:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+      db-redundant:
+        image: postgres:16
+        env:
+          POSTGRES_DB: energy
+          POSTGRES_PASSWORD: local-test-only
+        ports: ["5434:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1.2.2
+      - run: pip install -r requirements.txt
+
+      - name: Load the same sample data into both databases
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -p 5433 -U postgres -d energy -v ON_ERROR_STOP=1 -f sample_app/db/seed.sql
+          psql -h localhost -p 5434 -U postgres -d energy -v ON_ERROR_STOP=1 -f sample_app/db/seed.sql
+
+      - name: Smoke first, stop if it fails
+        run: pytest -m smoke --junitxml=reports/smoke.xml
+      - name: Regression
+        run: pytest -m regression --junitxml=reports/regression.xml
+      - name: Load
+        run: pytest -m load --junitxml=reports/load.xml
+      - name: Self-tests, prove the checks catch bad things
+        run: pytest -m selftest --junitxml=reports/selftest.xml
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: test-reports
+          path: reports/
+
+  lint:
+    name: Lint Terraform and Ansible
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive terraform
+      - name: Terraform validate
+        run: |
+          for stack in oidc test_env; do
+            terraform -chdir="terraform/$stack" init -backend=false
+            terraform -chdir="terraform/$stack" validate
+          done
+
+      - name: Ansible lint
+        working-directory: ansible
+        run: |
+          pip install -r ../requirements-hosts.txt ansible-lint
+          ansible-galaxy collection install -r requirements.yml
+          ansible-lint playbooks

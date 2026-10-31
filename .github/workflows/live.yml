@@ -1,0 +1,172 @@
+name: live
+
+# Tests a real AWS account. Run it by hand, or call it after a deployment.
+# It stays off until the repo variable LIVE_ENABLED is "true". See docs/OIDC_SETUP.md.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which account to test
+        type: choice
+        options: [qa, dev, stage, prod]
+        required: true
+      ami_id:
+        description: RHEL image to test. Empty means the latest RHEL 9.
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      ami_id:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  account:
+    name: Account checks and SCPs (read-only)
+    if: vars.LIVE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # lets this job get a short-lived OIDC token
+    env:
+      QA_BLOCKED_REGION: ${{ vars.QA_BLOCKED_REGION }}
+      QA_SCP_PRINCIPAL_ARN: ${{ vars.QA_SCP_PRINCIPAL_ARN }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Stop before logging in if this environment is missing a variable
+        env:
+          GITHUB_VARS: ${{ toJSON(vars) }}
+        run: python -m checks.variables "${{ inputs.environment }}"
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.QA_READONLY_ROLE_ARN }}
+          role-session-name: qa-account-${{ github.run_id }}
+          role-duration-seconds: 1800
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}   # stop if this is the wrong account
+          mask-aws-account-id: true
+
+      - name: Smoke first, stop if it fails
+        run: pytest --live --env "${{ inputs.environment }}" -m "smoke and aws" --junitxml=reports/account-smoke.xml
+      - name: Regression
+        run: pytest --live --env "${{ inputs.environment }}" -m "regression and aws" --junitxml=reports/account-regression.xml
+      - name: SCP guardrails
+        run: pytest --live --env "${{ inputs.environment }}" -m guardrail --junitxml=reports/account-guardrail.xml
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: account-reports-${{ inputs.environment }}
+          path: reports/
+          retention-days: 7
+
+  server:
+    name: Build RHEL server, test it, destroy it
+    needs: account
+    if: inputs.environment != 'prod'   # no test servers in production
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      QA_SSM_BUCKET: ${{ vars.QA_SSM_BUCKET }}
+      QA_DATABASES: ${{ vars.QA_DATABASES }}
+      QA_REQUIRED_CONNECTIONS: ${{ vars.QA_REQUIRED_CONNECTIONS }}
+      TF_VAR_environment: ${{ inputs.environment }}
+      TF_VAR_ami_id: ${{ inputs.ami_id }}
+      TF_VAR_lambda_role_arn: ${{ vars.QA_LAMBDA_ROLE_ARN }}
+      TF_VAR_region: ${{ vars.AWS_REGION }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+      - uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1 # v1.2.2
+
+      - name: Install the test tools
+        run: |
+          pip install -r requirements.txt -r requirements-hosts.txt
+          ansible-galaxy collection install -r ansible/requirements.yml
+          curl -fsSL -o ssm-plugin.deb https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb
+          sudo dpkg -i ssm-plugin.deb
+          if [ -n "$QA_DATABASES" ]; then
+            curl -fsSL -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.QA_TEST_ENV_ROLE_ARN }}
+          role-session-name: qa-server-${{ github.run_id }}
+          role-duration-seconds: 3600
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          mask-aws-account-id: true
+
+      - name: Make a one-time API token and allow only this runner
+        run: |
+          token="$(openssl rand -hex 32)"
+          echo "::add-mask::$token"
+          echo "QA_API_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "TF_VAR_runner_cidr=$(curl -fsS https://checkip.amazonaws.com)/32" >> "$GITHUB_ENV"
+
+      - name: Terraform, create the RHEL server and the Lambda function
+        working-directory: terraform/test_env
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+          echo "QA_API_URL=$(terraform output -raw api_url)" >> "$GITHUB_ENV"
+          echo "QA_LAMBDA_NAME=$(terraform output -raw lambda_name)" >> "$GITHUB_ENV"
+
+      - name: Ansible, configure the server and scan it with OpenSCAP
+        working-directory: ansible
+        run: |
+          sed -i "s/us-east-1/$AWS_REGION/" inventory/aws_ec2.yml
+          ansible-playbook playbooks/configure.yml
+          ansible-playbook playbooks/scan.yml
+
+      - name: Smoke first, stop if it fails
+        run: pytest --live --env "${{ inputs.environment }}" -m "smoke and not aws" --junitxml=reports/server-smoke.xml
+      - name: Regression
+        env:
+          QA_CMDB_URL: ${{ vars.QA_CMDB_URL }}
+          QA_CMDB_TOKEN: ${{ secrets.QA_CMDB_TOKEN }}
+        run: pytest --live --env "${{ inputs.environment }}" -m "regression and not aws" --junitxml=reports/server-regression.xml
+      - name: Load
+        run: pytest --live --env "${{ inputs.environment }}" -m load --junitxml=reports/server-load.xml
+
+      - name: Terraform, destroy everything, even if tests failed
+        if: always()
+        working-directory: terraform/test_env
+        run: terraform destroy -input=false -auto-approve
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: server-reports-${{ inputs.environment }}
+          path: reports/
+          retention-days: 7

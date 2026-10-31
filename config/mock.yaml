@@ -1,0 +1,27 @@
+# Used by plain "pytest". Fake AWS, local databases, no real account.
+modules: [aws, code, api, connectivity, database, os, serverless, cmdb, load]
+
+# High ports, so a service on your laptop can not fail the test.
+closed_ports: [59998, 59999]
+
+lambda_function: demo-telemetry
+
+load:
+  vus: 5
+  duration: 5s
+
+databases:
+  - name: primary
+    host: localhost
+    port: 5433
+    dbname: energy
+    user: qa_reader
+    password: local-test-only   # throwaway, see docker-compose.yml
+    sslmode: disable
+  - name: redundant
+    host: localhost
+    port: 5434
+    dbname: energy
+    user: qa_reader
+    password: local-test-only
+    sslmode: disable

@@ -1,0 +1,9 @@
+{
+    "distribution": "RedHat",
+    "major_version": "9",
+    "missing_packages": [],
+    "selinux": "enforcing",
+    "ssh_password_login": "no",
+    "ssh_root_login": "no",
+    "telemetry_service": "running"
+}

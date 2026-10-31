@@ -1,0 +1,9 @@
+{
+    "distribution": "RedHat",
+    "major_version": "9",
+    "missing_packages": ["audit"],
+    "selinux": "permissive",
+    "ssh_password_login": "yes",
+    "ssh_root_login": "yes",
+    "telemetry_service": "stopped"
+}

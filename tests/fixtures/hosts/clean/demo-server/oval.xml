@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oval_results xmlns="http://oval.mitre.org/XMLSchema/oval-results-5">
+  <oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+    <definitions>
+      <definition id="oval:com.redhat.rhsa:def:20260001" class="patch">
+        <metadata><title>RHSA-2026:0001: openssl security update (Critical)</title><advisory><severity>Critical</severity></advisory></metadata>
+      </definition>
+      <definition id="oval:com.redhat.rhsa:def:20260002" class="patch">
+        <metadata><title>RHSA-2026:0002: bash bug fix (Low)</title><advisory><severity>Low</severity></advisory></metadata>
+      </definition>
+    </definitions>
+  </oval_definitions>
+  <results>
+    <system>
+      <definitions>
+        <definition definition_id="oval:com.redhat.rhsa:def:20260001" result="false"/>
+        <definition definition_id="oval:com.redhat.rhsa:def:20260002" result="false"/>
+      </definitions>
+    </system>
+  </results>
+</oval_results>

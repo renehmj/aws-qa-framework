@@ -1,0 +1,6 @@
+boto3==1.43.123
+pytest==9.2.0
+PyYAML==6.0.3
+requests==2.34.2
+psycopg[binary]==3.3.6
+moto[ec2,s3,iam,cloudtrail,sts,awslambda]==5.2.5

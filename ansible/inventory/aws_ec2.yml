@@ -1,0 +1,10 @@
+---
+# Finds the test server by its tag. No IP addresses to keep up to date.
+plugin: amazon.aws.aws_ec2
+regions:   # the pipeline sets this from the AWS_REGION variable
+  - us-east-1
+filters:
+  tag:QAScan: "true"
+  instance-state-name: running
+hostnames:
+  - instance-id
