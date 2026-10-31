@@ -1,0 +1,10 @@
+# What the database tests check on every database.
+database_tables:
+  - name: battery_units
+    min_rows: 1
+    not_null: [unit_id, site, capacity_mwh]
+    key: [unit_id]
+  - name: schema_migrations
+    min_rows: 1
+    not_null: [version]
+    key: [version]

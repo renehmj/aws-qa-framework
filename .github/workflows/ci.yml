@@ -14,6 +14,9 @@ jobs:
     name: Smoke, regression, load
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: python
 
     services:
       db-primary:
@@ -45,8 +48,8 @@ jobs:
         env:
           PGPASSWORD: local-test-only
         run: |
-          psql -h localhost -p 5433 -U postgres -d energy -v ON_ERROR_STOP=1 -f sample_app/db/seed.sql
-          psql -h localhost -p 5434 -U postgres -d energy -v ON_ERROR_STOP=1 -f sample_app/db/seed.sql
+          psql -h localhost -p 5433 -U postgres -d energy -v ON_ERROR_STOP=1 -f ../sample_app/db/seed.sql
+          psql -h localhost -p 5434 -U postgres -d energy -v ON_ERROR_STOP=1 -f ../sample_app/db/seed.sql
 
       - name: Smoke first, stop if it fails
         run: pytest -m smoke --junitxml=reports/smoke.xml
@@ -61,7 +64,7 @@ jobs:
         if: always()
         with:
           name: test-reports
-          path: reports/
+          path: python/reports/
 
   lint:
     name: Lint Terraform and Ansible
@@ -80,7 +83,7 @@ jobs:
         run: terraform fmt -check -recursive terraform
       - name: Terraform validate
         run: |
-          for stack in oidc test_env; do
+          for stack in aws/oidc aws/test_env; do
             terraform -chdir="terraform/$stack" init -backend=false
             terraform -chdir="terraform/$stack" validate
           done
@@ -88,6 +91,6 @@ jobs:
       - name: Ansible lint
         working-directory: ansible
         run: |
-          pip install -r ../requirements-hosts.txt ansible-lint
+          pip install -r requirements.txt ansible-lint
           ansible-galaxy collection install -r requirements.yml
           ansible-lint playbooks

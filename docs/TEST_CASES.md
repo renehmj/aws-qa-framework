@@ -4,7 +4,7 @@ Each test in the code has the same ID. For example, `test_tc03_...` is TC-03.
 
 ## Smoke: is everything alive?
 
-| ID | Title | Module | Precondition | Steps | Expected result |
+| ID | Title | Area | Precondition | Steps | Expected result |
 |---|---|---|---|---|---|
 | TC-01 | Credentials work | aws | Test role is set up | Call `sts get-caller-identity` | Account ID is returned |
 | TC-02 | CloudTrail is logging | aws | Account has a trail | List trails, read each status | At least one trail, and every trail is logging |
@@ -26,7 +26,7 @@ Each test in the code has the same ID. For example, `test_tc03_...` is TC-03.
 
 | ID | Title | Type | Input | Expected result |
 |---|---|---|---|---|
-| TC-14 | Battery status limits | Boundary | Charge 0, 9.9, 10, 19.9, 20, 100 | critical, critical, low, low, ok, ok |
+| TC-14 | Status limits | Boundary | Charge 0, 9.9, 10, 19.9, 20, 100 | critical, critical, low, low, ok, ok |
 | TC-15 | Power calculation | Positive | Discharging, charging, idle | 48 kW, -48 kW, 0 kW |
 | TC-16 | Reading validation | Positive, negative | Good reading, then each field bad | Good is accepted, each bad one is reported |
 
@@ -59,13 +59,13 @@ Every test runs on every database in the config.
 | TC-26 | No duplicate keys | Negative | Group by key, find counts above 1 | None |
 | TC-27 | All databases match | Positive | Compare all rows with the first database | Same rows, in any order |
 
-## Regression: servers and RHEL images
+## Regression: Linux servers and images
 
 Ansible collects the evidence. pytest decides.
 
 | ID | Title | Steps | Expected result |
 |---|---|---|---|
-| TC-36 | Server settings are correct | Compare collected settings with `os_expected` | RHEL 9, SELinux enforcing, SSH rules set, service running, no missing packages |
+| TC-36 | Server settings are correct | Compare collected settings with `os_expected` | RHEL 9, SELinux enforcing, SSH rules set, service running, no missing packages. Debian has its own rules in its folder. |
 | TC-37 | Compliance scan passes | Read OpenSCAP CIS Level 1 results | No high severity failure, no rule that errored, except written waivers |
 | TC-38 | No serious vulnerabilities | Read OpenSCAP OVAL results | No Critical or Important advisory applies |
 
@@ -124,3 +124,5 @@ These build bad things on purpose in a fake account or a temporary table.
 | Server (edge) | Low severity failure, waived rule | Nothing |
 | GitHub variables | Missing variable, empty variable, badly pasted value | That variable |
 | GitHub variables (edge) | `prod` with no test server variables | Nothing |
+| Folder switches | A folder that an account has turned off | It is skipped |
+| Folder switches (edge) | A new folder, and a run on `prod` | Runs everywhere except `prod` |

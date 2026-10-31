@@ -1,0 +1,9 @@
+# QA account. Account details are GitHub variables. See docs/OIDC_SETUP.md.
+tests_off:
+  - apps/sample_app/database   # until real databases are connected
+  - cmdb                       # until a real CMDB is connected
+  - os/linux/deb               # the pipeline builds RHEL for now
+
+load:
+  vus: 20
+  duration: 1m

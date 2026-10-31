@@ -1,0 +1,14 @@
+# What a Debian or Ubuntu server must look like.
+# So far these run on sample results only. See "Not built yet" in docs/TEST_PLAN.md.
+os_expected:
+  distribution: Debian
+  major_version: "12"
+  ssh_root_login: "no"
+  ssh_password_login: "no"
+  telemetry_service: running
+  missing_packages: []
+
+# Which OpenSCAP results fail a test.
+scan:
+  fail_on_severity: [high]
+  waived_rules: {}

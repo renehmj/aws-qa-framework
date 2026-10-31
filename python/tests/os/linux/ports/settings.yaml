@@ -1,0 +1,2 @@
+# Ports that must not be reachable on a server.
+closed_ports: [22, 3389, 5432]

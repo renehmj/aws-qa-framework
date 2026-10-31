@@ -6,7 +6,7 @@
   become: true
   vars:
     scan_dir: /var/tmp/qa-scan
-    results_dir: "{{ playbook_dir }}/../../reports/hosts"
+    results_dir: "{{ playbook_dir }}/../../python/reports/hosts"
 
   tasks:
     - name: Create the results folder

@@ -1,0 +1,17 @@
+# Settings shared by every account. Each account file can replace any of these.
+# Each test folder keeps its own rules in its settings.yaml.
+
+# Defaults for a laptop run. In the pipeline, the GitHub variables
+# AWS_REGION and QA_BLOCKED_REGION replace these. See docs/OIDC_SETUP.md.
+region: us-east-1
+blocked_region: us-west-2
+
+# Every EC2 instance must have these tags (FinOps).
+required_tags:
+  - CostCenter
+  - Owner
+  - Environment
+
+# Hybrid: paths that must work, such as cloud to on-prem over VPN.
+# List them in the QA_REQUIRED_CONNECTIONS variable, so addresses stay out of this repo.
+required_connections: []

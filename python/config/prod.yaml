@@ -1,0 +1,4 @@
+# Production account. Read-only checks only.
+# No test server and no load test here, on purpose.
+tests_on:
+  - cloud/aws

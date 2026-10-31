@@ -29,7 +29,7 @@ and bad data on purpose, and confirm each check reports them.
 | Untagged resources | Costs can not be assigned | TC-03, TC-29 |
 | Admin port open to the internet | Direct attack path | TC-04, TC-21 |
 | A deployment reaches one database but not the other | Users get different answers | TC-27 |
-| A new RHEL image breaks a standard | Every server built from it inherits the problem | TC-36, TC-37, TC-38 |
+| A new server image breaks a standard | Every server built from it inherits the problem | TC-36, TC-37, TC-38 |
 | The CMDB is out of date | Decisions are made on wrong data | TC-34 |
 | The tests themselves have too much access | The tests become a risk | TC-11, TC-23, TC-28 |
 | A check silently stops working | False confidence | Self-tests |
@@ -44,10 +44,10 @@ and bad data on purpose, and confirm each check reports them.
 | Load | Regression passes | Under 1% errors, 95% of requests under 500 ms, over 99% correct answers |
 
 **A skip is not a pass.** In the pipeline, a missing tool, database, or GitHub variable
-fails the run. The only allowed skips are modules an environment has turned off on purpose,
+fails the run. The only allowed skips are folders an account has turned off on purpose,
 and TC-35 when an environment has no hybrid paths.
 
-**Waivers need a reason.** An accepted OpenSCAP rule is listed in `config/common.yaml`
+**Waivers need a reason.** An accepted OpenSCAP rule is listed in `settings.yaml` for that Linux family,
 with its reason, so a reviewer can challenge it.
 
 ## When a test fails
@@ -82,7 +82,7 @@ and the new one in the config. TC-34 finds servers that exist in only one place.
 | Performance | Built | TC-30 |
 | Lambda | Built | TC-31 to TC-33 |
 | Asset data (CMDB) | Built | TC-34 |
-| RHEL images | Built | TC-36 to TC-38, with any image ID |
+| Linux servers and images | Built for RHEL | TC-36 to TC-38, with any image ID. Debian runs TC-36 and TC-37 on sample results only. |
 
 ### Not built yet
 
@@ -97,6 +97,8 @@ These follow the same pattern: one check, one test, one self-test.
 | ECS on EC2 and Fargate | Services at desired count, health checks pass, a rollback returns the old version. |
 | Data lake and ETL | Source and target row counts match, the Data Catalog schema is correct. |
 | RDS and Aurora settings | Encrypted, not public, backups on, IAM login on. |
+| Debian and Ubuntu in the pipeline | Ansible with `apt` and Debian scan content, and Terraform with a Debian image. Debian's vulnerability feed is different, so TC-38 needs its own check. |
+| Other clouds, such as Azure and OCI | One folder per topic in `tests/cloud/azure/`, with checks in `checks/cloud/azure/`, its own login in the pipeline, and its own `terraform/azure/`. |
 
 ## What this framework does not prove
 
@@ -104,5 +106,6 @@ These follow the same pattern: one check, one test, one self-test.
   Only `--live` runs prove that.
 - The SCP simulator can differ from real AWS in some advanced cases, such as role
   chaining. TC-08 and TC-09 make real calls for that reason.
+- The Debian tests only read sample results. They do not prove a real Debian server was scanned correctly.
 - The RHEL vulnerability feed is only valid on real RHEL. On a rebuild such as Rocky
   it reports every definition as found, even for packages that are not installed.

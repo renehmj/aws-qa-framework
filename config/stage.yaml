@@ -1,6 +1,0 @@
-# Stage account. The closest copy of production, so the biggest load.
-modules: [aws, code, api, connectivity, os, serverless, load]
-
-load:
-  vus: 50
-  duration: 5m

@@ -2,14 +2,14 @@
 """Ansible inventory from the CMDB, for cloud and on-prem servers.
 
 Try it:
-  QA_ENV=qa QA_CMDB_URL=../tests/fixtures/cmdb_sample.json ansible-inventory -i inventory/cmdb.py --list
+  QA_ENV=qa QA_CMDB_URL=../python/tests/cmdb/sample_cmdb.json ansible-inventory -i inventory/cmdb.py --list
 """
 import json
 import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parents[2]))
+sys.path.insert(0, str(Path(__file__).parents[2] / "python"))
 
 from checks.cmdb import build_inventory, load_servers  # noqa: E402
 

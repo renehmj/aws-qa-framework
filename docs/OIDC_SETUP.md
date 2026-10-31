@@ -20,7 +20,7 @@ This creates the OIDC provider, the two roles, and the file transfer bucket.
 
 ```bash
 aws sso login                      # or any admin login for this account
-cd terraform/oidc
+cd terraform/aws/oidc
 terraform init
 terraform apply \
   -var 'github_repo=YOUR-USER/aws-qa-framework' \
@@ -73,7 +73,7 @@ Use an Environment secret instead.
 **What goes where:**
 
 - **Where to test** is a GitHub variable: the account, roles, region, and hosts.
-- **What to test** is a file in `config/`: the modules and the load size. A change there gets reviewed.
+- **What to test** is a file in `python/config/`: the test folders and the load size. A change there gets reviewed.
 
 ## Step 4: Turn on live runs
 
@@ -90,7 +90,7 @@ Open **Actions ▸ live ▸ Run workflow**, choose `qa`, and start it.
 
 TC-01 and TC-11 prove the login worked, and that the credentials are short-lived.
 
-To test a specific RHEL image, put its ID in the `ami_id` box. Empty means the latest RHEL 9.
+To test a specific image, put its ID in the `ami_id` box. Empty means the latest RHEL 9.
 
 ## Step 6: Add the other accounts
 
@@ -118,7 +118,7 @@ jobs:
 
 Real databases are off by default. To turn them on for an environment:
 
-1. Add `database` to `modules` in `config/qa.yaml`.
+1. In `python/config/qa.yaml`, remove `apps/sample_app/database` from `tests_off`.
 2. In the GitHub Environment, add the variable `QA_DATABASES`. List every database to compare:
 
    ```yaml
@@ -143,6 +143,8 @@ Real databases are off by default. To turn them on for an environment:
 3. Allow the `qa-test-env` role to log in, by adding `rds-db:connect` for the `qa_reader` user.
    This is not in Terraform, because each account has different database IDs.
 
+If an account has several apps with different databases, add `project: <app folder>` to each entry.
+
 The pipeline downloads `global-bundle.pem` from AWS when this variable is set.
 The runner must be able to reach the database. See [Private networks](SECURITY.md#private-networks).
 
@@ -160,19 +162,19 @@ To test a path such as cloud to on-prem, add the variable `QA_REQUIRED_CONNECTIO
 
 The CMDB is off by default. To turn it on for an environment:
 
-1. Add `cmdb` to `modules` in `config/qa.yaml`.
+1. In `python/config/qa.yaml`, remove `cmdb` from `tests_off`.
 2. In the GitHub Environment, add the variable `QA_CMDB_URL`. For ServiceNow:
    `https://YOUR-COMPANY.service-now.com/api/now/table/cmdb_ci_server`
 3. Add the secret `QA_CMDB_TOKEN`, from a read-only CMDB user.
 
 The connector expects these fields on each record: `name`, `instance_id`, `location`,
-`environment`, `status`, `ip_address`. Map them in `checks/cmdb.py` if yours differ.
+`environment`, `status`, `ip_address`. Map them in `python/checks/cmdb.py` if yours differ.
 
 To use the CMDB as the Ansible inventory, for cloud and on-prem servers together:
 
 ```bash
 cd ansible
-QA_ENV=qa QA_CMDB_URL=../tests/fixtures/cmdb_sample.json ansible-inventory -i inventory/cmdb.py --graph
+QA_ENV=qa QA_CMDB_URL=../python/tests/cmdb/sample_cmdb.json ansible-inventory -i inventory/cmdb.py --graph
 ansible-playbook -i inventory/cmdb.py playbooks/scan.yml
 ```
 
@@ -183,7 +185,7 @@ Cloud servers connect through Systems Manager. On-prem servers connect through S
 | Error | Likely cause | Fix |
 |---|---|---|
 | `Add the variable ... to the GitHub Environment` | The variable is missing or empty | Add it, see step 3 |
-| `the database module is on, but no databases are set` | `database` is in `modules`, but `QA_DATABASES` is not set | Add the variable, or turn the module off |
+| `this test needs a database, but none are set` | `apps/sample_app/database` is on, but `QA_DATABASES` is not set | Add the variable, or add the folder to `tests_off` |
 | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | `sub` in the trust does not match | Check the repo name and environment name, exactly |
 | `Credentials could not be loaded` | Job has no `id-token: write`, or the variable is empty | Check `permissions:` and the Environment variables |
 | `No OpenIDConnect provider found` | Step 2 was not run in this account | Run step 2 |

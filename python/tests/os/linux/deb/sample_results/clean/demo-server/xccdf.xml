@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_org.ssgproject.content_benchmark_DEBIAN-12">
+  <TestResult id="xccdf_org.open-scap_testresult_standard">
+    <rule-result idref="xccdf_org.ssgproject.content_rule_sshd_disable_root_login" severity="high"><result>pass</result></rule-result>
+    <rule-result idref="xccdf_org.ssgproject.content_rule_banner_etc_issue" severity="low"><result>notapplicable</result></rule-result>
+  </TestResult>
+</Benchmark>

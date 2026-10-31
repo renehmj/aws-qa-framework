@@ -1,0 +1,2 @@
+# Lambda runtimes that are out of support.
+blocked_lambda_runtimes: [python3.8, python3.9, nodejs16.x, nodejs18.x]

@@ -1,0 +1,18 @@
+# What SCPs must allow or deny. Nothing is really run, AWS only answers yes or no.
+scp_rules:
+  - action: cloudtrail:StopLogging
+    expect: deny
+  - action: cloudtrail:DeleteTrail
+    expect: deny
+  - action: organizations:LeaveOrganization
+    expect: deny
+  - action: ec2:DescribeInstances
+    expect: allow
+
+  # Tag enforcement: starting an instance with no CostCenter tag is denied.
+  - action: ec2:RunInstances
+    expect: deny
+  - action: ec2:RunInstances
+    expect: allow
+    context:
+      aws:RequestTag/CostCenter: "1234"

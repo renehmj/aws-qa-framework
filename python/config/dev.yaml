@@ -1,0 +1,9 @@
+# Dev account. Same tests as QA, with a smaller load.
+tests_off:
+  - apps/sample_app/database   # until real databases are connected
+  - cmdb                       # until a real CMDB is connected
+  - os/linux/deb               # the pipeline builds RHEL for now
+
+load:
+  vus: 5
+  duration: 30s

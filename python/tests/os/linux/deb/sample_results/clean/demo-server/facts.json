@@ -1,0 +1,8 @@
+{
+    "distribution": "Debian",
+    "major_version": "12",
+    "missing_packages": [],
+    "ssh_password_login": "no",
+    "ssh_root_login": "no",
+    "telemetry_service": "running"
+}

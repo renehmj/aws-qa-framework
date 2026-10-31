@@ -1,6 +1,0 @@
-# Dev account. Same tests as QA, with a smaller load.
-modules: [aws, code, api, connectivity, os, serverless, load]
-
-load:
-  vus: 5
-  duration: 30s

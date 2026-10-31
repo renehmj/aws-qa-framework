@@ -1,0 +1,19 @@
+# What a server or RHEL image must look like. Ansible collects these values.
+os_expected:
+  distribution: RedHat
+  major_version: "9"
+  selinux: enforcing
+  ssh_root_login: "no"
+  ssh_password_login: "no"
+  telemetry_service: running
+  missing_packages: []
+
+# Which OpenSCAP results fail a test.
+scan:
+  fail_on_severity: [high]
+  fail_on_vulnerability: [Critical, Important]
+
+  # Accepted risks. Every waiver needs a reason a reviewer can challenge.
+  waived_rules:
+    grub2_password: Cloud server with no console access, so nobody reaches the boot menu.
+    no_empty_passwords: Login is through Systems Manager only, with no local passwords.
